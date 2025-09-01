@@ -15,8 +15,8 @@ app.use(morgan("dev"));
 app.use(express.json());
 
 // --- MongoDB connection ---
-const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/vgs"; // local DB = vgs
-await mongoose.connect(MONGO_URI, { dbName: "vgs" });
+const MONGO_URI = process.env.MONGO_URI  // local DB = vgs
+await mongoose.connect(MONGO_URI);
 
 const imageSchema = new mongoose.Schema({
   key: { type: String, required: true, unique: true },
