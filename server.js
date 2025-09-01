@@ -1,3 +1,4 @@
+
 import express from "express";
 import cors from "cors";
 import morgan from "morgan";
@@ -132,9 +133,7 @@ app.delete("/api/images/:key", async (req, res) => {
   }
   res.json({ success: true, key });
 });
-
 // --- Reviews API ---
-
 // Get all reviews (latest first)
 app.get("/api/reviews", async (req, res) => {
   try {
