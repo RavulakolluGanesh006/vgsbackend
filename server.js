@@ -1,4 +1,3 @@
-
 import express from "express";
 import cors from "cors";
 import morgan from "morgan";
@@ -15,8 +14,8 @@ app.use(morgan("dev"));
 app.use(express.json());
 
 // --- MongoDB connection ---
-const MONGO_URI = process.env.MONGO_URI  // local DB = vgs
-await mongoose.connect(MONGO_URI);
+const MONGO_URI = process.env.MONGO_URI ;
+await mongoose.connect(MONGO_URI)
 
 const imageSchema = new mongoose.Schema({
   key: { type: String, required: true, unique: true },
@@ -47,6 +46,7 @@ const JobSchema = new mongoose.Schema({
   location:{ type: String, required: true },
   experience: { type: String, required: true },
   skills: { type: String, required: true },
+  category: { type: String, enum: ["Software Development", "Staffing"], required: true }
 }, { timestamps: true });
 
 const Job = mongoose.model("Job", JobSchema);
@@ -133,7 +133,9 @@ app.delete("/api/images/:key", async (req, res) => {
   }
   res.json({ success: true, key });
 });
+
 // --- Reviews API ---
+
 // Get all reviews (latest first)
 app.get("/api/reviews", async (req, res) => {
   try {
@@ -169,8 +171,8 @@ app.post("/api/reviews", async (req, res) => {
 // Create Job
 app.post("/api/jobs", async (req, res) => {
   try {
-    const { role, type, location, experience, skills } = req.body;
-    const job = new Job({ role, type, location, experience, skills });
+    const { role, type, location, experience, skills, category } = req.body; // 👈 include category
+    const job = new Job({ role, type, location, experience, skills, category });
     await job.save();
     res.json({ success: true, job });
   } catch (err) {
@@ -178,15 +180,21 @@ app.post("/api/jobs", async (req, res) => {
   }
 });
 
+
 // Get all jobs
 app.get("/api/jobs", async (req, res) => {
   try {
-    const jobs = await Job.find();
+    const filter = {};
+    if (req.query.category) {
+      filter.category = req.query.category; // ?category=Software%20Development
+    }
+    const jobs = await Job.find(filter);
     res.json(jobs);
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
+
 
 // Delete job
 app.delete("/api/jobs/:id", async (req, res) => {
@@ -210,3 +218,4 @@ const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`✅ Server running on http://localhost:${PORT}`);
 });
+
