@@ -6,6 +6,7 @@ import path from "path";
 import fs from "fs";
 import "dotenv/config";
 import mongoose from "mongoose";
+import ExcelJS from "exceljs";
 
 // --- Setup ---
 const app = express();
@@ -51,6 +52,28 @@ const JobSchema = new mongoose.Schema({
 
 const Job = mongoose.model("Job", JobSchema);
 
+//optional if required
+const candidateSchema = new mongoose.Schema({
+  jobRole: String,
+  companyName: String,
+  jobId: String,
+  jobLocation: String,
+  candidateId: String,
+  fullName: String,
+  email: String,
+  mobile: String,
+  domain: String,
+  degree: String,
+  branch: String,
+  yearOfPassedOut: String,
+  gender: String,
+  dob: String,
+  experience: String,
+  megaDrive: String,
+  resume: String
+}, { timestamps: true });
+
+const Candidate = mongoose.model("Candidate", candidateSchema);
 
 
 // --- Multer setup for uploads ---
@@ -205,6 +228,85 @@ app.delete("/api/jobs/:id", async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
+
+
+const EXCEL_PATH = path.join(process.cwd(), "candidates.xlsx");
+
+// Apply Job → Save only to Excel
+// Apply Job → Save only to Excel
+app.post("/api/apply", upload.single("resume"), async (req, res) => {
+  try {
+    const { fullName, email, mobile, degree, branch, yearOfPassedOut } = req.body;
+    const resumeFile = req.file ? `${BASE_URL}/uploads/${req.file.filename}` : "";
+
+    const workbook = new ExcelJS.Workbook();
+    if (fs.existsSync(EXCEL_PATH)) {
+      await workbook.xlsx.readFile(EXCEL_PATH);
+    }
+    const sheet = workbook.getWorksheet("Candidates") || workbook.addWorksheet("Candidates");
+
+    if (sheet.rowCount === 0) {
+      sheet.addRow(["Full Name", "Email", "Mobile", "Degree", "Branch", "Year Of Passed Out", "Resume"]);
+    }
+
+    // Create row
+    const row = sheet.addRow([fullName, email, mobile, degree, branch, yearOfPassedOut, ""]);
+
+    // Make Resume a clickable hyperlink
+    if (resumeFile) {
+      row.getCell(7).value = {
+        text: "📄 View Resume",
+        hyperlink: resumeFile
+      };
+      row.getCell(7).font = { color: { argb: "FF0000FF" }, underline: true }; // Blue + underline
+    }
+
+    await workbook.xlsx.writeFile(EXCEL_PATH);
+
+    res.json({ success: true, message: "Application saved!", resume: resumeFile });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+
+
+app.get("/api/applications/count", async (req, res) => {
+  try {
+    const workbook = new ExcelJS.Workbook();
+    if (!fs.existsSync(EXCEL_PATH)) {
+      return res.json({ count: 0 });
+    }
+    await workbook.xlsx.readFile(EXCEL_PATH);
+    const sheet = workbook.getWorksheet("Candidates");
+    if (!sheet) return res.json({ count: 0 });
+
+    // Subtract header row
+    const count = sheet.rowCount > 1 ? sheet.rowCount - 1 : 0;
+    res.json({ count });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ count: 0, error: err.message });
+  }
+});
+
+
+
+
+// Download Excel file
+app.get("/api/applications/download", (req, res) => {
+  if (!fs.existsSync(EXCEL_PATH)) {
+    return res.status(404).send("No applications found");
+  }
+  res.download(EXCEL_PATH, "candidates.xlsx");
+});
+
+
+
+
+
+
 
 
 
