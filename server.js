@@ -55,6 +55,19 @@ const JobSchema = new mongoose.Schema({
 
 const Job = mongoose.model("Job", JobSchema);
 
+const QuestionSchema = new mongoose.Schema({
+  name: String,            // asker name
+  question: String,        // question text
+  answer: String,          // admin reply (single)
+  visitorAnswers: [String], // 👈 multiple visitor answers
+  createdAt: { type: Date, default: Date.now }
+});
+
+const Question = mongoose.model("Question", QuestionSchema);
+
+
+export default mongoose.model("Question", QuestionSchema);
+
 
 const userSchema = new mongoose.Schema({
   username: { type: String, unique: true, required: true },
@@ -429,6 +442,70 @@ app.post("/api/login", (req, res) => {
 });
 
 
+// Create a Question
+app.post("/api/questions", async (req, res) => {
+  try {
+    const { name, question } = req.body;
+    const newQ = new Question({ name, question });
+    await newQ.save();
+    res.json(newQ);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get all Questions (latest first)
+app.get("/api/questions", async (req, res) => {
+  try {
+    const questions = await Question.find().sort({ createdAt: -1 });
+    res.json(questions);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin Answer Update
+app.put("/api/questions/:id", async (req, res) => {
+  try {
+    const { answer } = req.body;
+    const updatedQ = await Question.findByIdAndUpdate(
+      req.params.id,
+      { answer },
+      { new: true }
+    );
+    res.json(updatedQ);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Add Visitor Answer
+app.post("/api/questions/:id/visitor", async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text) return res.status(400).json({ error: "Answer text is required" });
+
+    const updatedQ = await Question.findByIdAndUpdate(
+      req.params.id,
+      { $push: { visitorAnswers: text } },
+      { new: true }
+    );
+
+    res.json(updatedQ);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete Question (Admin only)
+app.delete("/api/questions/:id", async (req, res) => {
+  try {
+    await Question.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 
 
